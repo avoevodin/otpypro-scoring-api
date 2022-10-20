@@ -101,17 +101,36 @@ class RequestMeta(type):
                 modified_dct["_fields"][k] = v
             del modified_dct[k]
 
+        return super().__new__(cls, name, bases, modified_dct)
+
 
 class BaseRequest(metaclass=RequestMeta):
-    pass
+    _fields: dict
+
+    def __init__(self, body):
+        self.body = body
+        self._errors = {}
+
+    def validate(self):
+        self._errors = {}
+        for k, v in self._fields.items():
+            if k not in self.body and not v.required:
+                continue
+
+            value = self.body.get(k)
+            try:
+                v.validate(value)
+                setattr(self, k, value)
+            except ValueError as e:
+                self._errors[k] = str(e)
 
 
-class ClientsInterestsRequest(object):
+class ClientsInterestsRequest(BaseRequest):
     client_ids = ClientIDsField(required=True)
     date = DateField(required=False, nullable=True)
 
 
-class OnlineScoreRequest(object):
+class OnlineScoreRequest(BaseRequest):
     first_name = CharField(required=False, nullable=True)
     last_name = CharField(required=False, nullable=True)
     email = EmailField(required=False, nullable=True)
@@ -120,7 +139,7 @@ class OnlineScoreRequest(object):
     gender = GenderField(required=False, nullable=True)
 
 
-class MethodRequest(object):
+class MethodRequest(BaseRequest):
     account = CharField(required=False, nullable=True)
     login = CharField(required=True, nullable=True)
     token = CharField(required=True, nullable=True)
