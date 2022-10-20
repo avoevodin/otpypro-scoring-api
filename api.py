@@ -104,9 +104,13 @@ class RequestMeta(type):
 
 
 class BaseRequest(metaclass=RequestMeta):
-    def __init__(self, body):
+    def __init__(self, body, method):
         self.body = body
+        self.method = method
         self._errors = {}
+
+    def __str__(self):
+        return self.method
 
     def validate(self):
         self._errors = {}
@@ -139,6 +143,28 @@ class OnlineScoreRequest(BaseRequest):
     birthday = BirthDayField(required=False, nullable=True)
     gender = GenderField(required=False, nullable=True)
 
+    def validate(self):
+        super().validate()
+        valid_pairs = [
+            ("phone", "email"),
+            ("first_name", "last_name"),
+            ("gender", "birthday"),
+        ]
+        if not self.errors.get("arguments"):
+            for pair in valid_pairs:
+                if (
+                    getattr(self, pair[0], None) not in NULL_VALUES
+                    and getattr(self, pair[1], None) not in NULL_VALUES
+                ):
+                    return
+            self.errors["arguments"] = (
+                f"Arguments for the method '{self}' must contain "
+                f"at least one valid pair: {valid_pairs}"
+            )
+
+    def get_response(self):
+        pass
+
 
 class MethodRequest(BaseRequest):
     account = CharField(required=False, nullable=True)
@@ -166,12 +192,12 @@ def check_auth(request):
 
 def method_handler(request, ctx, store):
     response, code = None, OK
-    method_req = MethodRequest(request["body"])
+    method_req = MethodRequest(request["body"], "method")
     method_req.validate()
     if method_req.errors:
         return method_req.errors, INVALID_REQUEST
     if not check_auth(method_req):
-        return f"Login failed for user {method_req.login!r}", FORBIDDEN
+        return f"Login failed for user {method_req.login}", FORBIDDEN
 
     allowed_ops = {
         "online_score": OnlineScoreRequest,
@@ -181,7 +207,11 @@ def method_handler(request, ctx, store):
     if method_req.method not in allowed_ops:
         return f"Method {method_req.method!r} is not found", NOT_FOUND
 
-    req = allowed_ops[method_req.method](method_req.arguments)
+    req = allowed_ops[method_req.method](method_req.arguments, method_req.method)
+    req.validate()
+    if req.errors:
+        return req.errors, INVALID_REQUEST
+    res = req.get_response()
     return response, code
 
 
