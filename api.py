@@ -92,6 +92,20 @@ class ClientIDsField(BaseField):
         super().validate(value)
 
 
+class RequestMeta(type):
+    def __new__(cls, name, bases, dct):
+        modified_dct = dct.copy()
+        modified_dct["_fields"] = {}
+        for k, v in modified_dct:
+            if isinstance(v, BaseField):
+                modified_dct["_fields"][k] = v
+            del modified_dct[k]
+
+
+class BaseRequest(metaclass=RequestMeta):
+    pass
+
+
 class ClientsInterestsRequest(object):
     client_ids = ClientIDsField(required=True)
     date = DateField(required=False, nullable=True)
@@ -131,7 +145,7 @@ def check_auth(request):
 
 
 def method_handler(request, ctx, store):
-    response, code = None, OK
+    response, code = None, None
     return response, code
 
 
