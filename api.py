@@ -154,11 +154,11 @@ class MethodRequest(BaseRequest):
 
 def check_auth(request):
     if request.is_admin:
-        digest = hashlib.sha512(
-            datetime.datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT
-        ).hexdigest()
+        str_to_hash = datetime.datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT
     else:
-        digest = hashlib.sha512(request.account + request.login + SALT).hexdigest()
+        str_to_hash = request.account + request.login + SALT
+    digest = hashlib.sha512(str_to_hash.encode("utf-8")).hexdigest()
+    print(digest)
     if digest == request.token:
         return True
     return False
@@ -168,7 +168,20 @@ def method_handler(request, ctx, store):
     response, code = None, OK
     method_req = MethodRequest(request["body"])
     method_req.validate()
-    logging.info(f"ERRORS: {method_req.errors}")
+    if method_req.errors:
+        return method_req.errors, INVALID_REQUEST
+    if not check_auth(method_req):
+        return f"Login failed for user {method_req.login!r}", FORBIDDEN
+
+    allowed_ops = {
+        "online_score": OnlineScoreRequest,
+        "clients_interests": ClientsInterestsRequest,
+    }
+
+    if method_req.method not in allowed_ops:
+        return f"Method {method_req.method!r} is not found", NOT_FOUND
+
+    req = allowed_ops[method_req.method](method_req.arguments)
     return response, code
 
 
