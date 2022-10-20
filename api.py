@@ -9,23 +9,18 @@ import hashlib
 import uuid
 from optparse import OptionParser
 from http.server import BaseHTTPRequestHandler, HTTPServer
+from http import HTTPStatus
 
 SALT = "Otus"
 ADMIN_LOGIN = "admin"
 ADMIN_SALT = "42"
-OK = 200
-BAD_REQUEST = 400
-FORBIDDEN = 403
-NOT_FOUND = 404
-INVALID_REQUEST = 422
-INTERNAL_ERROR = 500
-ERRORS = {
-    BAD_REQUEST: "Bad Request",
-    FORBIDDEN: "Forbidden",
-    NOT_FOUND: "Not Found",
-    INVALID_REQUEST: "Invalid Request",
-    INTERNAL_ERROR: "Internal Server Error",
-}
+OK = HTTPStatus.OK
+BAD_REQUEST = HTTPStatus.BAD_REQUEST
+FORBIDDEN = HTTPStatus.FORBIDDEN
+NOT_FOUND = HTTPStatus.NOT_FOUND
+INVALID_REQUEST = HTTPStatus.UNPROCESSABLE_ENTITY
+INTERNAL_ERROR = HTTPStatus.INTERNAL_SERVER_ERROR
+ERRORS = [BAD_REQUEST, FORBIDDEN, NOT_FOUND, INVALID_REQUEST, INTERNAL_ERROR]
 UNKNOWN = 0
 MALE = 1
 FEMALE = 2
@@ -136,7 +131,7 @@ def check_auth(request):
 
 
 def method_handler(request, ctx, store):
-    response, code = None, None
+    response, code = None, OK
     return response, code
 
 
@@ -152,8 +147,11 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
         context = {"request_id": self.get_request_id(self.headers)}
         request = None
         try:
-            data_string = self.rfile.read(int(self.headers["Content-Length"]))
-            request = json.loads(str(data_string, encoding="utf-8"))
+            data_string = str(
+                self.rfile.read(int(self.headers["Content-Length"])),
+                encoding="utf-8",
+            )
+            request = json.loads(data_string)
         except:
             code = BAD_REQUEST
 
@@ -175,12 +173,12 @@ class MainHTTPHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.end_headers()
         if code not in ERRORS:
-            r = {"response": response, "code": code}
+            r = {"response": response, "code": int(code)}
         else:
-            r = {"error": response or ERRORS.get(code, "Unknown Error"), "code": code}
+            r = {"error": response or code.phrase, "code": int(code)}
         context.update(r)
         logging.info(context)
-        self.wfile.write(json.dumps(r))
+        self.wfile.write(json.dumps(r).encode("utf-8"))
         return
 
 
