@@ -93,20 +93,17 @@ class ClientIDsField(BaseField):
 
 
 class RequestMeta(type):
-    def __new__(cls, name, bases, dct):
+    def __new__(mcs, name, bases, dct):
         modified_dct = dct.copy()
         modified_dct["_fields"] = {}
-        for k, v in modified_dct:
+        for k, v in dct.items():
             if isinstance(v, BaseField):
                 modified_dct["_fields"][k] = v
-            del modified_dct[k]
-
-        return super().__new__(cls, name, bases, modified_dct)
+                del modified_dct[k]
+        return super().__new__(mcs, name, bases, modified_dct)
 
 
 class BaseRequest(metaclass=RequestMeta):
-    _fields: dict
-
     def __init__(self, body):
         self.body = body
         self._errors = {}
@@ -123,6 +120,10 @@ class BaseRequest(metaclass=RequestMeta):
                 setattr(self, k, value)
             except ValueError as e:
                 self._errors[k] = str(e)
+
+    @property
+    def errors(self):
+        return self._errors
 
 
 class ClientsInterestsRequest(BaseRequest):
@@ -164,7 +165,10 @@ def check_auth(request):
 
 
 def method_handler(request, ctx, store):
-    response, code = None, None
+    response, code = None, OK
+    method_req = MethodRequest(request["body"])
+    method_req.validate()
+    logging.info(f"ERRORS: {method_req.errors}")
     return response, code
 
 
