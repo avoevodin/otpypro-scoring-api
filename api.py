@@ -45,7 +45,7 @@ PHONE_CODE = "7"
 
 
 class BaseField(abc.ABC):
-    def __init__(self, required=False, nullable=True):
+    def __init__(self, required=False, nullable=False):
         self.required = required
         self.nullable = nullable
 
@@ -150,6 +150,12 @@ class ClientIDsField(BaseField):
     def validate(self, value):
         super().validate(value)
 
+        if not isinstance(value, list):
+            raise ValueError(f"{self} must be a list")
+
+        if value and not all([isinstance(cid, int) for cid in value]):
+            raise ValueError(f"{self} must be a list of int")
+
 
 class RequestMeta(type):
     def __new__(mcs, name, bases, dct):
@@ -192,6 +198,11 @@ class BaseRequest(metaclass=RequestMeta):
 class ClientsInterestsRequest(BaseRequest):
     client_ids = ClientIDsField(required=True)
     date = DateField(required=False, nullable=True)
+
+    def get_response(self, ctx, store, *args, **kwargs):
+        client_ids = getattr(self, "client_ids", [])
+        ctx["nclients"] = len(client_ids)
+        return {str(cid): get_interests(store, cid) for cid in client_ids}
 
 
 class OnlineScoreRequest(BaseRequest):
