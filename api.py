@@ -33,6 +33,16 @@ GENDERS = {
 
 NULL_VALUES = ["", None, {}, (), []]
 
+VALID_PAIRS = [
+    ("phone", "email"),
+    ("first_name", "last_name"),
+    ("gender", "birthday"),
+]
+
+MAX_AGE = 70
+PHONE_DIGITS_CNT = 11
+PHONE_CODE = "7"
+
 
 class BaseField(abc.ABC):
     def __init__(self, required=False, nullable=True):
@@ -57,35 +67,83 @@ class CharField(BaseField):
     def validate(self, value):
         super().validate(value)
 
+        if value not in NULL_VALUES and not isinstance(value, str):
+            raise ValueError(f"{self} must be a str")
+
 
 class ArgumentsField(BaseField):
     def validate(self, value):
         super().validate(value)
 
+        if value not in NULL_VALUES and not isinstance(value, dict):
+            raise ValueError(f"{self} must be a dict")
 
-class EmailField(BaseField):
+
+class EmailField(CharField):
     def validate(self, value):
         super().validate(value)
+
+        if "@" not in value:
+            raise ValueError(f"{self} must contain '@'")
 
 
 class PhoneField(BaseField):
     def validate(self, value):
         super().validate(value)
 
+        if value not in NULL_VALUES and not (
+            isinstance(value, str) or isinstance(value, int)
+        ):
+            raise ValueError(f"{self} must be a str or int")
 
-class DateField(BaseField):
+        if isinstance(value, str):
+            try:
+                int(value)
+            except ValueError:
+                raise ValueError(f"{self} str must contain only numbers")
+        else:
+            value = str(value)
+
+        if len(value) != PHONE_DIGITS_CNT:
+            raise ValueError(f"{self} must have length {PHONE_DIGITS_CNT}")
+
+        if not value.startswith(PHONE_CODE):
+            raise ValueError(f"{self} must start with {PHONE_CODE}")
+
+
+class DateField(CharField):
     def validate(self, value):
         super().validate(value)
+        if not value:
+            return
+
+        try:
+            return datetime.datetime.strptime(value, "%d.%m.%Y").date()
+        except ValueError:
+            raise ValueError(f"{self} must be a 'DD.MM.YYYY' date")
 
 
-class BirthDayField(BaseField):
+class BirthDayField(DateField):
     def validate(self, value):
-        super().validate(value)
+        parsed_date = super().validate(value)
+        date_today = datetime.date.today()
+
+        if parsed_date and parsed_date < datetime.date(
+            year=date_today.year - MAX_AGE,
+            month=date_today.month,
+            day=date_today.day,
+        ):
+            raise ValueError(f"{self} must be greater than {MAX_AGE} years ago")
 
 
 class GenderField(BaseField):
     def validate(self, value):
         super().validate(value)
+
+        if value not in GENDERS.keys():
+            raise ValueError(
+                f"{self} must be one of ({', '.join([str(k) for k in GENDERS.keys()])})"
+            )
 
 
 class ClientIDsField(BaseField):
@@ -146,13 +204,8 @@ class OnlineScoreRequest(BaseRequest):
 
     def validate(self):
         super().validate()
-        valid_pairs = [
-            ("phone", "email"),
-            ("first_name", "last_name"),
-            ("gender", "birthday"),
-        ]
         if not self.errors.get("arguments"):
-            for pair in valid_pairs:
+            for pair in VALID_PAIRS:
                 if (
                     getattr(self, pair[0], None) not in NULL_VALUES
                     and getattr(self, pair[1], None) not in NULL_VALUES
@@ -160,7 +213,7 @@ class OnlineScoreRequest(BaseRequest):
                     return
             self.errors["arguments"] = (
                 f"Arguments for the method '{self}' must contain "
-                f"at least one valid pair: {valid_pairs}"
+                f"at least one valid pair: {VALID_PAIRS}"
             )
 
     def get_response(self, ctx, store, is_admin):
@@ -185,7 +238,7 @@ def check_auth(request):
     if request.is_admin:
         str_to_hash = datetime.datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT
     else:
-        str_to_hash = request.account + request.login + SALT
+        str_to_hash = str(request.account) + str(request.login) + SALT
     digest = hashlib.sha512(str_to_hash.encode("utf-8")).hexdigest()
     if digest == request.token:
         return True
