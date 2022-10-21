@@ -10,6 +10,7 @@ import uuid
 from optparse import OptionParser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from http import HTTPStatus
+from scoring import get_score, get_interests
 
 SALT = "Otus"
 ADMIN_LOGIN = "admin"
@@ -162,8 +163,10 @@ class OnlineScoreRequest(BaseRequest):
                 f"at least one valid pair: {valid_pairs}"
             )
 
-    def get_response(self):
-        pass
+    def get_response(self, ctx, store, is_admin):
+        score_args = {k: getattr(self, k, None) for k in self._fields.keys()}
+        ctx["has"] = [k for k, v in score_args.items() if v not in NULL_VALUES]
+        return {"score": 42 if is_admin else get_score(store, **score_args)}
 
 
 class MethodRequest(BaseRequest):
@@ -184,14 +187,12 @@ def check_auth(request):
     else:
         str_to_hash = request.account + request.login + SALT
     digest = hashlib.sha512(str_to_hash.encode("utf-8")).hexdigest()
-    print(digest)
     if digest == request.token:
         return True
     return False
 
 
 def method_handler(request, ctx, store):
-    response, code = None, OK
     method_req = MethodRequest(request["body"], "method")
     method_req.validate()
     if method_req.errors:
@@ -211,8 +212,8 @@ def method_handler(request, ctx, store):
     req.validate()
     if req.errors:
         return req.errors, INVALID_REQUEST
-    res = req.get_response()
-    return response, code
+    res = req.get_response(ctx, store, method_req.is_admin)
+    return res, OK
 
 
 class MainHTTPHandler(BaseHTTPRequestHandler):
