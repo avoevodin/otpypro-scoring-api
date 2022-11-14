@@ -11,6 +11,7 @@ from optparse import OptionParser
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from http import HTTPStatus
 from scoring import get_score, get_interests
+from store import Store
 
 SALT = "Otus"
 ADMIN_LOGIN = "admin"
@@ -110,6 +111,8 @@ class PhoneField(BaseField):
         if not value.startswith(PHONE_CODE):
             raise ValueError(f"{self} must start with {PHONE_CODE}")
 
+        return value
+
 
 class DateField(CharField):
     def validate(self, value):
@@ -118,9 +121,9 @@ class DateField(CharField):
             return
 
         try:
-            return datetime.datetime.strptime(value, "%d.%m.%Y").date()
+            return datetime.datetime.strptime(value, "%Y.%m.%d").date()
         except ValueError:
-            raise ValueError(f"{self} must be a 'DD.MM.YYYY' date")
+            raise ValueError(f"{self} must be a 'YYYY.MM.DD' date")
 
 
 class BirthDayField(DateField):
@@ -134,6 +137,7 @@ class BirthDayField(DateField):
             day=date_today.day,
         ):
             raise ValueError(f"{self} must be greater than {MAX_AGE} years ago")
+        return parsed_date
 
 
 class GenderField(BaseField):
@@ -185,7 +189,7 @@ class BaseRequest(metaclass=RequestMeta):
 
             value = self.body.get(k)
             try:
-                v.validate(value)
+                value = v.validate(value) or value
                 setattr(self, k, value)
             except ValueError as e:
                 self._errors[k] = str(e)
@@ -282,7 +286,7 @@ def method_handler(request, ctx, store):
 
 class MainHTTPHandler(BaseHTTPRequestHandler):
     router = {"method": method_handler}
-    store = None
+    store = Store()
 
     def get_request_id(self, headers):
         return headers.get("HTTP_X_REQUEST_ID", uuid.uuid4().hex)
