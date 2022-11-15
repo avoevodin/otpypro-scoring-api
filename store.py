@@ -94,8 +94,10 @@ class Store:
     TODO
     """
 
-    def __init__(self, *args, **kwargs):
-        """ """
+    def __init__(self):
+        """
+        TODO
+        """
         self.redis = RedisHandler()
         self.memcached = MemcachedHandler()
 
@@ -128,6 +130,13 @@ class Store:
             logging.info(f"Redis cache get error:\n {e}")
 
     def cache_set(self, key, value, exp=EXPIRE_TIME):
+        """
+        TODO
+        :param key:
+        :param value:
+        :param exp:
+        :return:
+        """
         try:
             self.redis.set(key, value, exp)
         except Exception as e:

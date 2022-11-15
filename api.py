@@ -249,12 +249,16 @@ class MethodRequest(BaseRequest):
         return self.login == ADMIN_LOGIN
 
 
-def check_auth(request):
+def generate_token(request):
     if request.is_admin:
         str_to_hash = datetime.datetime.now().strftime("%Y%m%d%H") + ADMIN_SALT
     else:
         str_to_hash = str(request.account) + str(request.login) + SALT
-    digest = hashlib.sha512(str_to_hash.encode("utf-8")).hexdigest()
+    return hashlib.sha512(str_to_hash.encode("utf-8")).hexdigest()
+
+
+def check_auth(request):
+    digest = generate_token(request)
     if digest == request.token:
         return True
     return False
