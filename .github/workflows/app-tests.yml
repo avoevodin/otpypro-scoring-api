@@ -23,7 +23,7 @@ jobs:
         if [ -f Pipfile ]; then pipenv install -d; fi
     - name: Unit tests with unittest
       run: |
-        pipenv run coverage run -m unittest -v
+        pipenv run coverage run --source='.' -m unittest -v
         pipenv run coverage xml -o coverage.xml
 #    - name: Check if coverage under 100
 #      run: |
