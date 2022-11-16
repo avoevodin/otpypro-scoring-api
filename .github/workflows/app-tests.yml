@@ -29,10 +29,10 @@ jobs:
 
     - name: Install dependencies
       if:
-        (
+        ${{
           -f Pipfile &&
           steps.cache-pipenv.outputs.cache-hit != 'true'
-        )
+        }}
       run: |
         pipenv install -d
     - name: Unit tests with unittest
