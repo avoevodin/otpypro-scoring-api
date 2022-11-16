@@ -27,4 +27,4 @@ jobs:
         pipenv run coverage xml -o coverage.xml
     - name: Check if coverage under 80
       run: |
-        coverage report --fail-under=80
+        pipenv run coverage report --fail-under=80
