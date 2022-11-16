@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 jobs:
-  test:
+  unit_tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,11 +16,20 @@ jobs:
       uses: actions/setup-python@v2
       with:
         python-version: 3.10.0
-    - name: Install dependencies
+    - name: Install pipenv
       run: |
         python -m pip install --upgrade pip
         python -m pip install pipenv
-        if [ -f Pipfile ]; then pipenv install -d; fi
+
+    - id: cache-pipenv
+      uses: actions/cache@v1
+      with:
+        path: ~/.local/share/virtualenvs
+        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+    - name: Install dependencies
+      run: |
+        if [ -f Pipfile; steps.cache-pipenv.outputs.cache-hit != 'true']; then pipenv install -d; fi
     - name: Unit tests with unittest
       run: |
         pipenv run coverage run -m unittest discover tests -v
@@ -28,3 +37,6 @@ jobs:
     - name: Check if coverage under 80
       run: |
         pipenv run coverage report --fail-under=80
+
+  integration_tests:
+    runs-on: ubuntu-latest
