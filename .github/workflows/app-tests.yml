@@ -28,8 +28,13 @@ jobs:
         key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
 
     - name: Install dependencies
+      if:
+        (
+          -f Pipfile &&
+          steps.cache-pipenv.outputs.cache-hit != 'true'
+        )
       run: |
-        if [ -f Pipfile; steps.cache-pipenv.outputs.cache-hit != 'true']; then pipenv install -d; fi
+        pipenv install -d
     - name: Unit tests with unittest
       run: |
         pipenv run coverage run -m unittest discover tests -v
