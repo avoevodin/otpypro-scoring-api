@@ -25,10 +25,11 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install pipenv
         if [ -f Pipfile ]; then pipenv install -d; fi
+        pipenv shell
     - name: Unit tests with unittest
       run: |
-        pipenv coverage run --source='.' unittest --verbosity=2
-        pipenv coverage xml -o coverage.xml
+        coverage run --source='.' unittest --verbosity=2
+        coverage xml -o coverage.xml
 #    - name: Check if coverage under 100
 #      run: |
 #        coverage report --fail-under=100
