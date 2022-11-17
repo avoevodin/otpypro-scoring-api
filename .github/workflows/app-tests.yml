@@ -51,7 +51,7 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 10s
       memcached_service:
-        image: 'memcached/Dockerfile'
+        image: Dockerfile
         ports:
           - 11211:11211
 #        options:
