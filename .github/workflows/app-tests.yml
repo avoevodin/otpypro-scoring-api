@@ -9,6 +9,9 @@ on:
 jobs:
   unit_tests:
     runs-on: ubuntu-latest
+    env:
+      WORKON_HOME: /root
+      ENV PIPENV_PIPFILE: Pipfile
 
     steps:
     - uses: actions/checkout@v2
