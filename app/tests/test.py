@@ -1,8 +1,8 @@
 import unittest
 from functools import wraps
 
-import api
-from store import Store
+from app import api
+from app.store import Store
 
 
 def cases(cases_list):

@@ -1,0 +1,86 @@
+name: Test Scoring App
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  unit_tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.10.8
+    - name: Install pipenv
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install pipenv
+
+    - id: cache-pipenv
+      uses: actions/cache@v1
+      with:
+        path: ~/.local/share/virtualenvs
+        key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+    - name: Install dependencies
+      if: steps.cache-pipenv.outputs.cache-hit != 'true'
+      run: |
+        if [ -f Pipfile ]; then pipenv install -d; fi
+    - name: Unit tests with unittest
+      run: |
+        pipenv run coverage run -m unittest discover app/tests -v
+        pipenv run coverage xml -o coverage.xml
+    - name: Check if coverage under 80
+      run: |
+        pipenv run coverage report --fail-under=80
+
+  integration_tests:
+    runs-on: ubuntu-latest
+
+    services:
+      redis_service:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+      memcached_service:
+        image: memcached:alpine
+        ports:
+          - 11211:11211
+        options:
+          --health-cmd "nc -z 127.0.0.1 11211"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.10.8
+      - name: Install pipenv
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pipenv
+
+      - id: cache-pipenv
+        uses: actions/cache@v1
+        with:
+          path: ~/.local/share/virtualenvs
+          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
+
+      - name: Install dependencies
+        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+        run: |
+          if [ -f Pipfile ]; then pipenv install -d; fi
+      - name: Integration tests with pytest
+        run: |
+          pipenv run pytest -v
+
