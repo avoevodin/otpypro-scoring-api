@@ -51,11 +51,9 @@ jobs:
           --health-cmd "redis-cli ping"
           --health-interval 10s
       memcached_service:
-        image: memcached:alpine
+        image: memcached/Dockerfile
         ports:
           - 11211:11211
-        run: |
-          apt-get update && apt-get install -y netcat && apt-get clean
 #        options:
 #          --health-cmd "/bin/nc -z 127.0.0.1 11211"
 #          --health-interval 10s
