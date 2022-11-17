@@ -54,11 +54,13 @@ jobs:
         image: memcached:alpine
         ports:
           - 11211:11211
-        options:
-          --health-cmd "/bin/nc -z localhost 11211"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+        run: |
+          apt-get update && apt-get install -y netcat && apt-get clean
+#        options:
+#          --health-cmd "/bin/nc -z 127.0.0.1 11211"
+#          --health-interval 10s
+#          --health-timeout 5s
+#          --health-retries 5
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python
