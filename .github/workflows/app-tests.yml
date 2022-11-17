@@ -50,6 +50,8 @@ jobs:
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
       memcached_service:
         image: memcached:alpine
         ports:
