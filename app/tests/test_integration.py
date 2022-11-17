@@ -1,7 +1,6 @@
 import hashlib
 from datetime import datetime
 
-import requests
 import pytest
 
 from app import api
